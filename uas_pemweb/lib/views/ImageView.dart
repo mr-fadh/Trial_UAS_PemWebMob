@@ -1,152 +1,68 @@
-import 'package:flutter/material.dart';
-import 'package:flutter_cache_manager/flutter_cache_manager.dart';
-import 'package:fluttertoast/fluttertoast.dart';
-import 'package:cached_network_image/cached_network_image.dart';
-import 'package:dio/dio.dart';
-import 'package:image_gallery_saver/image_gallery_saver.dart';
 import 'dart:typed_data';
-import 'package:permission_handler/permission_handler.dart';
+import 'package:dio/dio.dart';
+import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:flutter_wallpaper_manager/flutter_wallpaper_manager.dart';
-import '../views/favorite.dart';
+import 'package:fluttertoast/fluttertoast.dart';
+import 'package:image_gallery_saver/image_gallery_saver.dart';
+// import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class ImageView extends StatefulWidget {
   final String imgUrl;
 
-  const ImageView({Key? key, required this.imgUrl}) : super(key: key);
+  ImageView({required this.imgUrl});
 
   @override
   _ImageViewState createState() => _ImageViewState();
 }
 
 class _ImageViewState extends State<ImageView> {
-  Future<bool?> _isFavorite() async {
-    List<String> favoriteImages = await FavoriteManager.getFavoriteImages();
-    return favoriteImages.contains(widget.imgUrl);
-  }
+  bool isFavorite = false;
 
-  Future<void> _toggleFavorite() async {
-    if (await _isFavorite() ?? false) {
-      await FavoriteManager.removeFavoriteImage(widget.imgUrl);
-      _showToast('Removed from Favorites', Colors.red);
-    } else {
-      await FavoriteManager.addFavoriteImage(widget.imgUrl);
-      _showToast('Added to Favorites', Colors.green);
-    }
-    setState(() {});
-  }
-
-  Widget _buildFavoriteIcon() {
-    return FutureBuilder<bool?>(
-      future: _isFavorite(),
-      builder: (context, snapshot) {
-        bool isFavorite = snapshot.data ?? false;
-        return IconButton(
-          icon: Icon(
-            isFavorite ? Icons.favorite : Icons.favorite_border,
-            size: 50,
-            color: Colors.white,
-          ),
-          onPressed: _toggleFavorite,
-        );
-      },
-    );
-  }
-
-  void _showToast(String message, Color backgroundColor) {
-    Fluttertoast.showToast(
-      msg: message,
-      toastLength: Toast.LENGTH_SHORT,
-      gravity: ToastGravity.BOTTOM,
-      backgroundColor: backgroundColor,
-      textColor: Colors.white,
-    );
-  }
-
-  Future<void> _saveImage() async {
+  Future<void> setLock() async {
     await _requestStoragePermission();
-    var response = await Dio()
-        .get(widget.imgUrl, options: Options(responseType: ResponseType.bytes));
-    final result =
-        await ImageGallerySaver.saveImage(Uint8List.fromList(response.data));
-    if (result == false) {
-      Fluttertoast.showToast(
-        msg: 'Fail to save image',
-        toastLength: Toast.LENGTH_SHORT,
-        gravity: ToastGravity.BOTTOM,
-        backgroundColor: Colors.red,
-        textColor: Colors.white,
-      );
-    } else {
-      Fluttertoast.showToast(
-        msg: 'Image Saved to Gallery',
-        toastLength: Toast.LENGTH_SHORT,
-        gravity: ToastGravity.BOTTOM,
-        backgroundColor: Colors.green,
-        textColor: Colors.white,
-      );
-    }
+    int location = WallpaperManager.LOCK_SCREEN;
+    var file = await DefaultCacheManager().getSingleFile(widget.imgUrl);
+    final bool result =
+        await WallpaperManager.setWallpaperFromFile(file.path, location);
+    _showWallpaperResult(result);
+    Navigator.pop(context);
   }
 
+  Future<void> setHome() async {
+    await _requestStoragePermission();
+    int location = WallpaperManager.HOME_SCREEN;
+    var file = await DefaultCacheManager().getSingleFile(widget.imgUrl);
+    final bool result =
+        await WallpaperManager.setWallpaperFromFile(file.path, location);
+    _showWallpaperResult(result);
+    Navigator.pop(context);
+  }
+
+  Future<void> setBoth() async {
+    await _requestStoragePermission();
+    int location = WallpaperManager.BOTH_SCREEN;
+    var file = await DefaultCacheManager().getSingleFile(widget.imgUrl);
+    final bool result =
+        await WallpaperManager.setWallpaperFromFile(file.path, location);
+    _showWallpaperResult(result);
+    Navigator.pop(context);
+  }
+
+  // Fungsi untuk meminta izin penyimpanan
   Future<void> _requestStoragePermission() async {
     var status = await Permission.storage.request();
     if (status.isDenied) {
-      Fluttertoast.showToast(
-        msg: 'Storage permission is required to save the image.',
-        toastLength: Toast.LENGTH_LONG,
-        gravity: ToastGravity.BOTTOM,
-        backgroundColor: Colors.red,
-        textColor: Colors.white,
-      );
+      Fluttertoast.showToast(msg: "Give Storage permissions from Settings");
+      await Permission.storage.request();
     }
   }
 
-  Future<void> _showApplyWallpaperDialog() async {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Apply Wallpaper'),
-          content: SingleChildScrollView(
-            child: ListBody(
-              children: <Widget>[
-                GestureDetector(
-                  onTap: () {
-                    _setWallpaper(WallpaperManager.LOCK_SCREEN);
-                  },
-                  child: const Text('Set as Lock Screen Wallpaper'),
-                ),
-                const Padding(
-                  padding: EdgeInsets.all(8.0),
-                ),
-                GestureDetector(
-                  onTap: () {
-                    _setWallpaper(WallpaperManager.HOME_SCREEN);
-                  },
-                  child: const Text('Set as Home Screen Wallpaper'),
-                ),
-                const Padding(
-                  padding: EdgeInsets.all(8.0),
-                ),
-                GestureDetector(
-                  onTap: () {
-                    _setWallpaper(WallpaperManager.BOTH_SCREEN);
-                  },
-                  child: const Text('Set as Both Screen Wallpaper'),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Future<void> _setWallpaper(int location) async {
-    await _requestStoragePermission();
-    var file = await DefaultCacheManager().getSingleFile(widget.imgUrl);
-    final result =
-        await WallpaperManager.setWallpaperFromFile(file.path, location);
-    if (result) {
+  // Fungsi untuk menampilkan hasil operasi atur wallpaper
+  void _showWallpaperResult(bool result) {
+    if (result == true) {
       Fluttertoast.showToast(
         msg: 'Wallpaper is Applied',
         toastLength: Toast.LENGTH_SHORT,
@@ -165,13 +81,16 @@ class _ImageViewState extends State<ImageView> {
     }
   }
 
+  // ...
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Image View'),
+        title: Text('Image View'),
+        // Tombol kembali ke halaman utama
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: Icon(Icons.arrow_back),
           onPressed: () {
             Navigator.pop(context);
           },
@@ -179,7 +98,7 @@ class _ImageViewState extends State<ImageView> {
       ),
       body: Stack(
         children: <Widget>[
-          SizedBox(
+          Container(
             height: MediaQuery.of(context).size.height,
             width: MediaQuery.of(context).size.width,
             child: CachedNetworkImage(
@@ -195,11 +114,23 @@ class _ImageViewState extends State<ImageView> {
               crossAxisAlignment: CrossAxisAlignment.center,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
+                // Icon yang berubah berdasarkan kondisi favorit
                 Container(
                   height: 70,
                   width: 70,
                   color: Colors.black54,
-                  child: _buildFavoriteIcon(),
+                  child: IconButton(
+                    onPressed: () {
+                      setState(() {
+                        isFavorite = !isFavorite;
+                      });
+                    },
+                    icon: Icon(
+                      isFavorite ? Icons.favorite : Icons.favorite_border,
+                      size: 50,
+                      color: Colors.white,
+                    ),
+                  ),
                 ),
                 const SizedBox(
                   width: 20,
@@ -242,6 +173,81 @@ class _ImageViewState extends State<ImageView> {
           ),
         ],
       ),
+    );
+  }
+
+  // Fungsi untuk menyimpan gambar ke galeri
+  Future<void> _saveImage() async {
+    await _requestStoragePermission();
+    var response = await Dio()
+        .get(widget.imgUrl, options: Options(responseType: ResponseType.bytes));
+    final result =
+        await ImageGallerySaver.saveImage(Uint8List.fromList(response.data));
+    if (result == false) {
+      Fluttertoast.showToast(
+        msg: 'Fail to save image',
+        toastLength: Toast.LENGTH_SHORT,
+        gravity: ToastGravity.BOTTOM,
+        backgroundColor: Colors.red,
+        textColor: Colors.white,
+      );
+    } else {
+      Fluttertoast.showToast(
+        msg: 'Image Saved to Gallery',
+        toastLength: Toast.LENGTH_SHORT,
+        gravity: ToastGravity.BOTTOM,
+        backgroundColor: Colors.green,
+        textColor: Colors.white,
+      );
+    }
+  }
+
+  // Fungsi untuk menampilkan dialog pilihan atur wallpaper
+  void _showApplyWallpaperDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return SimpleDialog(
+          backgroundColor: Colors.black,
+          alignment: Alignment.bottomCenter,
+          title: const Text(
+            'Apply Wallpaper',
+            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+          ),
+          children: [
+            SimpleDialogOption(
+              onPressed: () {
+                setLock();
+              },
+              child: const Text(
+                'Lock Screen Wallpaper',
+                style:
+                    TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+              ),
+            ),
+            SimpleDialogOption(
+              onPressed: () {
+                setHome();
+              },
+              child: const Text(
+                'Home Screen Wallpaper',
+                style:
+                    TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+              ),
+            ),
+            SimpleDialogOption(
+              onPressed: () {
+                setBoth();
+              },
+              child: const Text(
+                'Both',
+                style:
+                    TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

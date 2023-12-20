@@ -1,5 +1,9 @@
+// ignore_for_file: prefer_const_constructors
+
 import 'package:flutter/material.dart';
 import 'package:uas_pemweb/homepage.dart';
+// import 'package:uas_pemweb/imagepage.dart';
+// import '../koneksi/api.dart';
 
 void main() {
   runApp(const MyApp());
@@ -16,7 +20,7 @@ class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      home: const HomePage(),
+      home: HomePage(),
       theme: ThemeData(
         useMaterial3: true,
       ),
