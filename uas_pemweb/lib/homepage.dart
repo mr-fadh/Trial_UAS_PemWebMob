@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../imagepage.dart';
-import '../views/categories.dart';
+import '../views/favorite_view.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -10,15 +10,15 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  int _index = 0;
+  final int _index = 0;
   int index_size = 0;
-  var _kategory = ['Alam', 'Hot', 'Game', 'Sexy'];
+  final _kategory = ['Alam', 'Hot', 'Game', 'Sexy'];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(
+        title: const Text(
           'Wallpaper App',
           style: TextStyle(color: Colors.black),
         ),
@@ -26,16 +26,21 @@ class _HomePageState extends State<HomePage> {
         elevation: 0,
         centerTitle: true,
         leading: IconButton(
-          icon: Icon(Icons.menu, color: Colors.black),
+          icon: const Icon(Icons.menu, color: Colors.black),
           onPressed: () {},
         ),
         actions: <Widget>[
           IconButton(
-            icon: Icon(
+            icon: const Icon(
               Icons.favorite,
               color: Colors.black,
             ),
-            onPressed: () {},
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const FavoriteView()),
+              );
+            },
           ),
         ],
       ),
@@ -55,21 +60,21 @@ class _HomePageState extends State<HomePage> {
                       duration: const Duration(milliseconds: 400),
                       curve: Curves.fastOutSlowIn,
                       padding: _index == index
-                          ? EdgeInsets.only()
-                          : EdgeInsets.only(
+                          ? const EdgeInsets.only()
+                          : const EdgeInsets.only(
                               top: 8.0, bottom: 8.0, left: 10.0, right: 10.0),
                       child: InkWell(
                         onTap: () {
                           print('Card di tekan pada indeks $index');
                         },
                         child: Container(
-                          child: Column(
+                          child: const Column(
                             children: [
                               Expanded(
                                 child: Card(
                                   elevation: 4,
-                                  child: Center(child: Text('Wallpaper')),
                                   color: Colors.green,
+                                  child: Center(child: Text('Wallpaper')),
                                 ),
                               ),
                               Text(
@@ -85,27 +90,31 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
             ),
-            SizedBox(height: 16),
-            Container(
-              height: 80,
-              child: ListView.builder(
-                padding: EdgeInsets.symmetric(horizontal: 24),
-                itemCount: categories.length,
-                shrinkWrap: true,
-                physics: ClampingScrollPhysics(),
-                scrollDirection: Axis.horizontal,
-                itemBuilder: (context, index) {
-                  return CategorieTile(
-                    title: categories[index].categorieName,
-                    imgUrl: categories[index].imgUrl,
-                  );
-                },
+            SliverToBoxAdapter(
+              child: SizedBox(
+                height: 50,
+                child: PageView.builder(
+                  itemCount: _kategory.length,
+                  controller:
+                      PageController(viewportFraction: 0.3, initialPage: 2),
+                  itemBuilder: (context, index) {
+                    return InkWell(
+                      onTap: () {
+                        print('Category di tekan pada indeks $index');
+                      },
+                      child: Card(
+                        elevation: 4,
+                        child: Center(child: Text(_kategory[index])),
+                      ),
+                    );
+                  },
+                ),
               ),
             ),
           ];
         },
-        body: Padding(
-          padding: const EdgeInsets.only(top: 25.0),
+        body: const Padding(
+          padding: EdgeInsets.only(top: 25.0),
           child: Display(),
         ),
       ),
